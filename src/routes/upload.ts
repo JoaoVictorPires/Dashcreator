@@ -21,7 +21,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     res.status(500).json({ error: "Erro ao processar o arquivo" });
   }
 });
-router.post("/:id", upload.single("file"), async (req, res) => {
+router.put("/:id", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "Nenhum arquivo enviado" });

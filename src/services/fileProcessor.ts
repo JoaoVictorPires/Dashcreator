@@ -34,7 +34,7 @@ export async function processFile(filePath: string, fileName: string, id?: strin
     }
 
     fs.unlinkSync(filePath);
-    logger.info(`Arquivo ${fileName} processado e salvo no banco.`);
+    logger.success(`Arquivo ${fileName} processado e salvo no banco.`);
   } catch (error) {
     logger.error("Erro ao processar arquivo:", error);
     throw error;
