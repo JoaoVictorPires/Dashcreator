@@ -1,10 +1,7 @@
-import { logger } from "./logger";
-
-export function parseJsonSafe<T>(str: string, fallback: T): T {
+export function parseJsonSafe<T = any>(value: string, fallback: T | null = null): T | null {
   try {
-    return JSON.parse(str) as T;
-  } catch (error) {
-    logger.warn("Erro ao fazer parse do JSON:", error);
+    return JSON.parse(value) as T;
+  } catch {
     return fallback;
   }
 }

@@ -1,52 +1,61 @@
 import { Router } from "express";
-import * as XLSX from "xlsx";
-import { prisma } from "../utils/prisma";
+import { PrismaClient } from "@prisma/client";
+import { generateXlsx } from "../utils/generateXlsx";
 import { parseJsonSafe } from "../utils/parseJsonSafe";
-import { logger } from "../utils/logger";
+import { formatDate } from "../utils/formatDate";
 
+const prisma = new PrismaClient();
 const router = Router();
+
 
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const numericId = parseInt(id, 10);
-    
-    if (isNaN(numericId)) {
-      return res.status(400).json({ error: "ID inválido" });
-    }
-
     const uploadData = await prisma.uploadData.findUnique({
-      where: { id: numericId }
+      where: { id: parseInt(id, 10) }
     });
 
     if (!uploadData) {
       return res.status(404).json({ error: "Dados não encontrados" });
     }
 
-    const parsedUploadData = parseJsonSafe(uploadData.data as string, []);
-    const worksheet = XLSX.utils.json_to_sheet(parsedUploadData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Dados");
+    const data = parseJsonSafe<any[]>(uploadData.data as string, []) || [];
+    const buffer = generateXlsx({ data });
 
-    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-    
-    const sanitizedFilename = uploadData.filename.replace(/["\r\n]/g, '');
-    res.setHeader("Content-Disposition", `attachment; filename="${sanitizedFilename}"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${uploadData.filename}"`);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.send(buffer);
   } catch (error) {
-    logger.error("Erro ao fazer download:", error);
-    
-    if (error instanceof Error) {
-      if (error.message.includes('XLSX')) {
-        return res.status(422).json({ error: "Erro ao processar arquivo Excel" });
-      }
-      if (error.message.includes('database') || error.message.includes('prisma')) {
-        return res.status(503).json({ error: "Erro de conexão com banco de dados" });
-      }
-    }
-    
-    res.status(500).json({ error: "Erro interno do servidor" });
+    console.error("Erro ao fazer download:", error);
+    res.status(500).json({ error: "Erro ao fazer download" });
   }
 });
+
+
+router.get("/", async (req, res) => {
+  try {
+    const allUploads = await prisma.uploadData.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+
+    const allData = allUploads.flatMap(upload => {
+      const parsedData = parseJsonSafe<any[]>(upload.data as string, []) || [];
+      return parsedData.map(row => ({
+        ...row,
+        arquivo: upload.filename,
+        criadoEm: formatDate(upload.createdAt)
+      }));
+    });
+
+    const buffer = generateXlsx({ data: allData, sheetName: "Todos os Dados" });
+
+    res.setHeader("Content-Disposition", 'attachment; filename="todos_os_dados.xlsx"');
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buffer);
+  } catch (error) {
+    console.error("Erro ao gerar XLSX:", error);
+    res.status(500).json({ error: "Erro ao gerar XLSX" });
+  }
+});
+
 export default router;

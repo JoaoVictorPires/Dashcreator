@@ -6,7 +6,6 @@ import path from "path";
 
 export async function processFile(filePath: string, fileName: string, id?: string) {
   try {
-    // Validar se o arquivo está dentro do diretório permitido
     const allowedDir = path.resolve("src/upload");
     const resolvedPath = path.resolve(filePath);
     if (!resolvedPath.startsWith(allowedDir)) {
