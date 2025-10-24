@@ -5,7 +5,7 @@ import { logger } from "../utils/logger";
 
 const upload = multer({ 
   dest: "src/upload/",
-  limits: { fileSize: 8 * 1024 * 1024 } // 8MB limit
+  limits: { fileSize: 20 * 1024 * 1024 } 
 });
 const router = Router();
 
