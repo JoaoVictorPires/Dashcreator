@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DashCreator - Limpeza de Excel no Front</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #0b1224;
+      --card: #111a2f;
+      --accent: #4ade80;
+      --accent-strong: #22c55e;
+      --text: #e4ecff;
+      --muted: #93a3c7;
+      --stroke: #1f2a44;
+      --danger: #f87171;
+      --warning: #facc15;
+      --glass: rgba(255, 255, 255, 0.04);
+      --shadow: 0 25px 80px rgba(0, 0, 0, 0.45);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Segoe UI", system-ui;
+      background: radial-gradient(circle at 20% 20%, rgba(34, 197, 94, 0.12), transparent 30%),
+                  radial-gradient(circle at 80% 0%, rgba(56, 189, 248, 0.14), transparent 26%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 32px 8px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      letter-spacing: -0.02em;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: linear-gradient(120deg, rgba(34, 197, 94, 0.18), rgba(59, 130, 246, 0.14));
+      color: #d9f99d;
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 12px;
+    }
+    p.lead {
+      margin: 6px 32px 24px;
+      color: var(--muted);
+      max-width: 880px;
+      font-size: 16px;
+    }
+    main { padding: 0 32px 48px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .card {
+      background: linear-gradient(160deg, var(--card), var(--panel));
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+      min-height: 140px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+    }
+    .card small { color: var(--muted); }
+    .dropzone {
+      border: 1.5px dashed rgba(148, 163, 184, 0.6);
+      padding: 22px;
+      border-radius: 14px;
+      display: grid;
+      gap: 12px;
+      align-items: center;
+      background: var(--glass);
+      cursor: pointer;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    .dropzone:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .dropzone input { display: none; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    button {
+      border: 1px solid var(--stroke);
+      background: var(--card);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    button:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: 0 8px 20px rgba(34, 197, 94, 0.18); }
+    button.primary { background: linear-gradient(120deg, var(--accent), var(--accent-strong)); color: #0b1723; border-color: rgba(34, 197, 94, 0.9); }
+    button.ghost { background: transparent; }
+    button.danger { border-color: rgba(248, 113, 113, 0.6); color: var(--danger); }
+    .columns-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px;
+    }
+    .column-pill {
+      border: 1px solid var(--stroke);
+      background: var(--glass);
+      border-radius: 12px;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+    .pill-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .pill-top span { font-weight: 600; }
+    .pill-actions { display: flex; gap: 8px; align-items: center; }
+    input[type="text"], select {
+      width: 100%;
+      background: #0a1324;
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 8px 10px;
+      color: var(--text);
+      font-family: inherit;
+    }
+    input[type="text"]:focus { outline: 2px solid rgba(74, 222, 128, 0.35); }
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      max-height: 420px;
+      background: #0c1528;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 640px; }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #15203a;
+      font-size: 14px;
+      color: #d9e4ff;
+    }
+    th { position: sticky; top: 0; background: #101a32; text-align: left; z-index: 2; }
+    tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+    .empty { color: var(--muted); }
+    .pill-removed { border-color: rgba(248, 113, 113, 0.6); background: rgba(248, 113, 113, 0.06); }
+    .row-removed td { color: #fca5a5; text-decoration: line-through; }
+    .status {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge { padding: 6px 10px; border-radius: 10px; background: #12203b; border: 1px solid var(--stroke); }
+    @media (max-width: 720px) {
+      header { padding: 24px 18px 6px; }
+      p.lead, main { padding: 0 18px 32px; }
+      table { min-width: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="tag">Opção A — Excel no Front</span>
+    <h1>Limpe o Excel antes de subir</h1>
+  </header>
+  <p class="lead">Suba a planilha, veja o preview, remova colunas/linhas, renomeie cabeçalhos e envie o Excel limpo para o backend (campo <strong>file</strong> do multer). Nenhum retrabalho no servidor.</p>
+  <main>
+    <div class="grid">
+      <section class="card" aria-labelledby="upload">
+        <h2 id="upload">1) Upload e preview</h2>
+        <small>xls, xlsx, csv até 8MB</small>
+        <label class="dropzone" id="dropzone">
+          <div>
+            <strong>Arraste o Excel aqui</strong><br />
+            <span class="muted">ou clique para escolher</span>
+          </div>
+          <input type="file" id="fileInput" accept=".xls,.xlsx,.csv" />
+          <div class="status" id="status"></div>
+        </label>
+        <div class="actions" style="margin-top: 12px;">
+          <button id="clearAll" class="ghost">Resetar sessão</button>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="columns">
+        <h2 id="columns">2) Colunas</h2>
+        <small>Desligue colunas e renomeie cabeçalho</small>
+        <div class="columns-list" id="columnsList"></div>
+      </section>
+      <section class="card" aria-labelledby="rows">
+        <h2 id="rows">3) Linhas</h2>
+        <small>Selecione e remova linhas indesejadas</small>
+        <div class="actions" style="margin-top: 8px;">
+          <button id="removeSelected" class="danger">Remover linhas selecionadas</button>
+          <button id="undoRows" class="ghost">Desfazer remoção</button>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="export">
+        <h2 id="export">4) Exportar e enviar</h2>
+        <small>Gere Excel limpo e envie para /upload</small>
+        <div class="actions" style="margin-top: 10px;">
+          <button id="downloadClean" class="primary">Baixar Excel limpo</button>
+          <button id="sendBackend" class="primary" style="background: linear-gradient(120deg, #38bdf8, #22c55e); border-color: rgba(56, 189, 248, 0.8);">Enviar para backend</button>
+        </div>
+        <div class="status" id="sendStatus" style="margin-top: 10px;"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="status" style="margin-bottom: 12px;">
+        <span class="badge" id="fileBadge">Nenhum arquivo</span>
+        <span class="badge" id="rowsBadge">0 linhas</span>
+        <span class="badge" id="columnsBadge">0 colunas</span>
+      </div>
+      <div class="table-wrap" id="tableWrap">
+        <table>
+          <thead><tr id="tableHead"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <small id="previewNote" class="empty" style="display:block; margin-top: 12px;">O preview mostra até 200 linhas.</small>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      rows: [],
+      removedColumns: new Set(),
+      renamed: {},
+      removedRows: new Set(),
+      fileName: "excel",
+    };
+
+    const fileInput = document.getElementById("fileInput");
+    const dropzone = document.getElementById("dropzone");
+    const columnsList = document.getElementById("columnsList");
+    const tableHead = document.getElementById("tableHead");
+    const tableBody = document.getElementById("tableBody");
+    const tableWrap = document.getElementById("tableWrap");
+    const statusEl = document.getElementById("status");
+    const sendStatus = document.getElementById("sendStatus");
+    const fileBadge = document.getElementById("fileBadge");
+    const rowsBadge = document.getElementById("rowsBadge");
+    const columnsBadge = document.getElementById("columnsBadge");
+
+    dropzone.addEventListener("click", () => fileInput.click());
+    dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.style.borderColor = "var(--accent)"; });
+    dropzone.addEventListener("dragleave", () => { dropzone.style.borderColor = "rgba(148, 163, 184, 0.6)"; });
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = "rgba(148, 163, 184, 0.6)";
+      const file = e.dataTransfer?.files?.[0];
+      if (file) handleFile(file);
+    });
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) handleFile(file);
+    });
+
+    document.getElementById("clearAll").addEventListener("click", () => {
+      state.rows = [];
+      state.removedColumns = new Set();
+      state.renamed = {};
+      state.removedRows = new Set();
+      state.fileName = "excel";
+      fileInput.value = "";
+      render();
+      sendStatus.textContent = "";
+      statusEl.textContent = "Sessão zerada.";
+    });
+
+    document.getElementById("removeSelected").addEventListener("click", () => {
+      if (!state.removedRows.size) return;
+      state.rows = state.rows.filter((_, idx) => !state.removedRows.has(idx));
+      state.removedRows = new Set();
+      render();
+    });
+
+    document.getElementById("undoRows").addEventListener("click", () => {
+      state.removedRows = new Set();
+      render();
+    });
+
+    document.getElementById("downloadClean").addEventListener("click", () => {
+      const clean = getCleanRows();
+      if (!clean.length) {
+        sendStatus.textContent = "Nenhuma linha para exportar.";
+        return;
+      }
+      const blob = buildWorkbookBlob(clean);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${state.fileName}-limpo.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("sendBackend").addEventListener("click", async () => {
+      const clean = getCleanRows();
+      if (!clean.length) {
+        sendStatus.textContent = "Nenhum dado para enviar.";
+        return;
+      }
+      sendStatus.textContent = "Enviando...";
+      const blob = buildWorkbookBlob(clean);
+      const form = new FormData();
+      form.append("file", new File([blob], `${state.fileName}-limpo.xlsx`, { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      try {
+        const resp = await fetch("/upload", { method: "POST", body: form });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        sendStatus.textContent = "Enviado com sucesso para /upload.";
+      } catch (err) {
+        sendStatus.textContent = "Falha ao enviar. Confira o console.";
+        console.error(err);
+      }
+    });
+
+    function handleFile(file) {
+      statusEl.textContent = `Lendo ${file.name}...`;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: "array" });
+        const firstSheet = wb.SheetNames[0];
+        const sheet = wb.Sheets[firstSheet];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        state.rows = rows;
+        state.removedColumns = new Set();
+        state.renamed = {};
+        state.removedRows = new Set();
+        state.fileName = file.name.replace(/\.[^.]+$/, "") || "excel";
+        statusEl.textContent = `Planilha carregada (${rows.length} linhas, ${getAllColumns().length} colunas).`;
+        render();
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function getAllColumns() {
+      const cols = new Set();
+      state.rows.forEach((row) => Object.keys(row).forEach((c) => cols.add(c)));
+      return Array.from(cols);
+    }
+
+    function getCleanColumns() {
+      return getAllColumns().filter((c) => !state.removedColumns.has(c));
+    }
+
+    function getCleanRows() {
+      const cols = getCleanColumns();
+      return state.rows
+        .filter((_, idx) => !state.removedRows.has(idx))
+        .map((row) => {
+          const out = {};
+          cols.forEach((col) => {
+            const nextName = state.renamed[col]?.trim() || col;
+            out[nextName] = row[col] ?? "";
+          });
+          return out;
+        });
+    }
+
+    function buildWorkbookBlob(cleanRows) {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(cleanRows);
+      XLSX.utils.book_append_sheet(wb, ws, "Limpo");
+      const array = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      return new Blob([array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    }
+
+    function renderColumns() {
+      columnsList.innerHTML = "";
+      const cols = getAllColumns();
+      if (!cols.length) {
+        columnsList.innerHTML = '<div class="empty">Carregue um arquivo para editar colunas.</div>';
+        return;
+      }
+      cols.forEach((col) => {
+        const pill = document.createElement("div");
+        pill.className = "column-pill" + (state.removedColumns.has(col) ? " pill-removed" : "");
+        const header = document.createElement("div");
+        header.className = "pill-top";
+        header.innerHTML = `<span>${col}</span>`;
+
+        const toggle = document.createElement("button");
+        toggle.className = state.removedColumns.has(col) ? "danger" : "ghost";
+        toggle.textContent = state.removedColumns.has(col) ? "Ativar" : "Remover";
+        toggle.addEventListener("click", () => {
+          if (state.removedColumns.has(col)) state.removedColumns.delete(col);
+          else state.removedColumns.add(col);
+          render();
+        });
+        header.appendChild(toggle);
+        pill.appendChild(header);
+
+        const rename = document.createElement("input");
+        rename.type = "text";
+        rename.placeholder = "Novo nome";
+        rename.value = state.renamed[col] || "";
+        rename.addEventListener("input", (e) => {
+          state.renamed[col] = e.target.value;
+          renderTable();
+        });
+        pill.appendChild(rename);
+        columnsList.appendChild(pill);
+      });
+    }
+
+    function renderTable() {
+      const cols = getCleanColumns();
+      tableHead.innerHTML = "";
+      tableBody.innerHTML = "";
+      if (!state.rows.length) {
+        tableBody.innerHTML = '<tr><td class="empty">Carregue um arquivo para visualizar.</td></tr>';
+        columnsBadge.textContent = "0 colunas";
+        rowsBadge.textContent = "0 linhas";
+        return;
+      }
+      const headRow = document.createElement("tr");
+      headRow.innerHTML = `<th style="width:50px;">Linha</th>${cols.map((c) => `<th>${state.renamed[c]?.trim() || c}</th>`).join("")}`;
+      tableHead.appendChild(headRow);
+
+      const cleanRows = getCleanRows();
+      const limit = Math.min(cleanRows.length, 200);
+      for (let i = 0; i < limit; i += 1) {
+        const row = cleanRows[i];
+        const tr = document.createElement("tr");
+        tr.className = state.removedRows.has(i) ? "row-removed" : "";
+        const selectCell = document.createElement("td");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = state.removedRows.has(i);
+        cb.addEventListener("change", (e) => {
+          if (e.target.checked) state.removedRows.add(i); else state.removedRows.delete(i);
+          renderTable();
+        });
+        selectCell.appendChild(cb);
+        tr.appendChild(selectCell);
+
+        cols.forEach((col) => {
+          const td = document.createElement("td");
+          const label = state.renamed[col]?.trim() || col;
+          td.setAttribute("data-col", label);
+          td.textContent = row[label] ?? "";
+          tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+      }
+      rowsBadge.textContent = `${cleanRows.length} linhas`;
+      columnsBadge.textContent = `${cols.length} colunas`;
+    }
+
+    function renderBadges() {
+      fileBadge.textContent = state.rows.length ? `${state.fileName}.xlsx` : "Nenhum arquivo";
+    }
+
+    function render() {
+      renderColumns();
+      renderTable();
+      renderBadges();
+    }
+
+    render();
+  </script>
+</body>
+</html>

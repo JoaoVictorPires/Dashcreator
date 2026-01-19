@@ -1,3 +1,4 @@
+import path from "path";
 import express from "express";
 import dotenv from "dotenv";
 import uploadRouter from "./routes/upload";
@@ -10,6 +11,7 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.use("/upload", uploadRouter);
 app.use("/data", dataRouter);
