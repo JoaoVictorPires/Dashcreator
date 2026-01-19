@@ -1,10 +1,9 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/prisma";
 import { generateXlsx } from "../utils/generateXlsx";
 import { parseJsonSafe } from "../utils/parseJsonSafe";
 import { formatDate } from "../utils/formatDate";
 
-const prisma = new PrismaClient();
 const router = Router();
 
 

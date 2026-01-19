@@ -199,6 +199,18 @@
           <button id="clearAll" class="ghost">Resetar sessão</button>
         </div>
       </section>
+      <section class="card" aria-labelledby="db">
+        <h2 id="db">Banco de dados</h2>
+        <small>Buscar uploads existentes e continuar edição</small>
+        <div class="actions" style="margin-top: 8px;">
+          <button id="refreshDb" class="ghost">Atualizar lista</button>
+        </div>
+        <select id="dbSelect"></select>
+        <div class="actions" style="margin-top: 8px;">
+          <button id="loadDb" class="primary">Carregar do banco</button>
+        </div>
+        <div class="status" id="dbStatus"></div>
+      </section>
       <section class="card" aria-labelledby="columns">
         <h2 id="columns">2) Colunas</h2>
         <small>Desligue colunas e renomeie cabeçalho</small>
@@ -259,6 +271,8 @@
     const fileBadge = document.getElementById("fileBadge");
     const rowsBadge = document.getElementById("rowsBadge");
     const columnsBadge = document.getElementById("columnsBadge");
+    const dbSelect = document.getElementById("dbSelect");
+    const dbStatus = document.getElementById("dbStatus");
 
     dropzone.addEventListener("click", () => fileInput.click());
     dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.style.borderColor = "var(--accent)"; });
@@ -292,6 +306,9 @@
       state.removedRows = new Set();
       render();
     });
+
+    document.getElementById("refreshDb").addEventListener("click", () => fetchUploads());
+    document.getElementById("loadDb").addEventListener("click", () => loadSelectedUpload());
 
     document.getElementById("undoRows").addEventListener("click", () => {
       state.removedRows = new Set();
@@ -351,6 +368,77 @@
         render();
       };
       reader.readAsArrayBuffer(file);
+    }
+
+    async function fetchUploads() {
+      dbStatus.textContent = "Buscando uploads...";
+      dbSelect.innerHTML = "";
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Selecione um upload";
+      dbSelect.appendChild(placeholder);
+      try {
+        const resp = await fetch("/data");
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const list = await resp.json();
+        list.forEach((item) => {
+          const opt = document.createElement("option");
+          const label = `${item.id} — ${item.filename || "sem nome"}`;
+          opt.value = item.id;
+          opt.textContent = label;
+          dbSelect.appendChild(opt);
+        });
+        dbStatus.textContent = list.length ? "Escolha um upload e clique em Carregar." : "Nenhum upload encontrado.";
+      } catch (err) {
+        dbStatus.textContent = "Erro ao listar uploads.";
+        console.error(err);
+      }
+    }
+
+    function normalizeDbData(data) {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      if (typeof data === "string") {
+        try {
+          const parsed = JSON.parse(data);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (err) {
+          console.error("Erro ao parsear JSON do banco", err);
+          return [];
+        }
+      }
+      if (typeof data === "object" && Array.isArray(data.data)) return data.data;
+      return [];
+    }
+
+    async function loadSelectedUpload() {
+      const id = dbSelect.value;
+      if (!id) {
+        dbStatus.textContent = "Selecione um upload.";
+        return;
+      }
+      dbStatus.textContent = "Carregando do banco...";
+      try {
+        const resp = await fetch(`/data/${id}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const item = await resp.json();
+        const rows = normalizeDbData(item?.data);
+        if (!rows.length) {
+          dbStatus.textContent = "Upload sem linhas ou formato desconhecido.";
+          return;
+        }
+        state.rows = rows;
+        state.removedColumns = new Set();
+        state.renamed = {};
+        state.removedRows = new Set();
+        state.fileName = (item?.filename || `upload-${id}`).replace(/\.[^.]+$/, "") || `upload-${id}`;
+        render();
+        statusEl.textContent = `Dados carregados do banco (${rows.length} linhas).`;
+        dbStatus.textContent = "Pronto para editar e reenviar.";
+      } catch (err) {
+        dbStatus.textContent = "Erro ao carregar upload.";
+        console.error(err);
+      }
     }
 
     function getAllColumns() {
@@ -478,6 +566,7 @@
     }
 
     render();
+    fetchUploads();
   </script>
 </body>
 </html>
