@@ -34,17 +34,66 @@ cd Dashcreator
 npm install
 ```
 
-3. Configure as variáveis de ambiente:
-```bash
-cp .env.example .env
+3. **Configure o Docker para PostgreSQL:**
+
+Crie o arquivo `docker-compose.yml` na raiz do projeto:
+
+```yaml
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: root123
+      POSTGRES_DB: dashdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
 ```
 
-4. Inicie o banco PostgreSQL:
+**Parametrização do Docker:**
+- `POSTGRES_USER`: usuário do banco (padrão: `admin`)
+- `POSTGRES_PASSWORD`: senha do banco (padrão: `root123`)
+- `POSTGRES_DB`: nome do banco de dados (padrão: `dashdb`)
+- `ports`: mapeamento de portas `"HOST:CONTAINER"` (padrão: `5432:5432`)
+- `volumes`: persistência dos dados em volume Docker nomeado `pgdata`
+
+4. **Configure as variáveis de ambiente:**
+
+Crie o arquivo `.env` na raiz do projeto:
+
+```env
+DATABASE_URL="postgresql://admin:root123@localhost:5432/dashdb"
+PORT=3000
+```
+
+⚠️ **Importante**: Se você alterar `POSTGRES_USER`, `POSTGRES_PASSWORD` ou `POSTGRES_DB` no `docker-compose.yml`, ajuste também a `DATABASE_URL` no `.env` seguindo o padrão:
+
+```
+postgresql://[USUARIO]:[SENHA]@localhost:5432/[BANCO]
+```
+
+5. **Inicie o banco PostgreSQL:**
 ```bash
 docker-compose up -d
 ```
 
-5. Execute as migrações:
+Para verificar se o container está rodando:
+```bash
+docker-compose ps
+```
+
+Para ver os logs:
+```bash
+docker-compose logs -f db
+```
+
+6. **Execute as migrações do Prisma:**
 ```bash
 npx prisma migrate dev
 ```
@@ -119,3 +168,25 @@ Variáveis de ambiente necessárias:
 - `npm run build` - Build para produção
 - `npm start` - Iniciar aplicação
 - `npm run prisma` - Comandos do Prisma
+
+## Comandos Docker Úteis
+
+```bash
+# Iniciar o banco de dados
+docker-compose up -d
+
+# Parar o banco de dados
+docker-compose down
+
+# Parar e remover volumes (⚠️ apaga os dados)
+docker-compose down -v
+
+# Ver logs em tempo real
+docker-compose logs -f db
+
+# Verificar status do container
+docker-compose ps
+
+# Reiniciar o container
+docker-compose restart db
+```
